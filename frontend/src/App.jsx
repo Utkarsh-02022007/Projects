@@ -1,12 +1,20 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
-const initialContacts = [
-  { id: 1, name: "Mum", phone: "9876543210", relation: "Family", primary: true },
-  { id: 2, name: "Aarav", phone: "9876512345", relation: "Friend", primary: false },
-];
+const API_BASE_URL = "http://127.0.0.1:8003";
+const TEST_USER_ID = 1;
+import "./App.css";
 
+function formatContact(contact) {
+  return {
+    id: contact.id,
+    name: contact.contact_name,
+    phone: contact.phone,
+    relation: contact.relationship || "Other",
+    primary: contact.is_primary,
+  };
+}
 const visitedPlaces = [
   {
     id: 1,
@@ -16,7 +24,7 @@ const visitedPlaces = [
     time: "10:20 AM",
     type: "College",
   },
-  {
+  { 
     id: 2,
     place: "Huda City Centre",
     area: "Sector 29, Gurugram",
@@ -43,6 +51,32 @@ function Icon({ children }) {
 }
 
 function App() {
+  const loadContacts = async () => {
+  try {
+    setContactsLoading(true);
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/users/${TEST_USER_ID}/emergency-contacts`
+    );
+
+    if (!response.ok) {
+      throw new Error("Could not load emergency contacts.");
+    }
+
+    const data = await response.json();
+
+    setContacts(data.map(formatContact));
+  } catch (error) {
+    console.error("Load contacts error:", error);
+    alert(error.message);
+  } finally {
+    setContactsLoading(false);
+  }
+};
+
+useEffect(() => {
+  loadContacts();
+}, []);
   const [activePage, setActivePage] = useState("map");
   const [journeyActive, setJourneyActive] = useState(false);
   const [destination, setDestination] = useState("");
@@ -50,7 +84,8 @@ function App() {
   const [sosConfirm, setSosConfirm] = useState(false);
   const [sosSent, setSosSent] = useState(false);
 
-  const [contacts, setContacts] = useState(initialContacts);
+  const [contacts, setContacts] = useState([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
 
   const [contactName, setContactName] = useState("");
@@ -68,52 +103,109 @@ function App() {
   };
 
   // Add a trusted contact
-  const addContact = (event) => {
-    event.preventDefault();
+ const addContact = async (event) => {
+  event.preventDefault();
 
-    if (!contactName.trim()) {
-      alert("Please enter the contact name.");
-      return;
-    }
+  if (!contactName.trim()) {
+    alert("Please enter the contact name.");
+    return;
+  }
+  
 
-    if (!/^\d{10}$/.test(contactPhone)) {
-      alert("Enter a valid 10-digit phone number.");
-      return;
-    }
+  if (!/^\d{10}$/.test(contactPhone)) {
+    alert("Enter a valid 10-digit phone number.");
+    return;
+  }
 
-    setContacts((current) => [
-      ...current,
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/users/${TEST_USER_ID}/emergency-contacts`,
       {
-        id: Date.now(),
-        name: contactName.trim(),
-        phone: contactPhone,
-        relation: contactRelation,
-        primary: current.length === 0,
-      },
-    ]);
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contact_name: contactName.trim(),
+          phone: contactPhone,
+          relationship: contactRelation,
+          is_primary: contacts.length === 0,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not save contact.");
+    }
+
+    await loadContacts();
 
     setContactName("");
     setContactPhone("");
     setContactRelation("Family");
     setShowContactForm(false);
-  };
 
+    alert("Contact saved successfully.");
+  } catch (error) {
+    console.error("Add contact error:", error);
+    alert(error.message);
+  }
+};
   // Remove a contact
-  const removeContact = (id) => {
-    setContacts((current) =>
-      current.filter((contact) => contact.id !== id)
+  const removeContact = async (id) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/users/${TEST_USER_ID}/emergency-contacts/${id}`,
+      {
+        method: "DELETE",
+      }
     );
-  };
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.detail || "Could not delete contact.");
+    }
+
+    await loadContacts();
+
+    alert("Contact deleted successfully.");
+  } catch (error) {
+    console.error("Delete contact error:", error);
+    alert(error.message);
+  }
+};
 
   // Select a primary/favourite contact
-  const setPrimaryContact = (id) => {
-    setContacts((current) =>
-      current.map((contact) => ({
-        ...contact,
-        primary: contact.id === id,
-      }))
+  const setPrimaryContact = async (id) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/users/${TEST_USER_ID}/emergency-contacts/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          is_primary: true,
+        }),
+      }
     );
-  };
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not update primary contact.");
+    }
+
+    await loadContacts();
+  } catch (error) {
+    console.error("Primary contact error:", error);
+    alert(error.message);
+  }
+};
+
 
   const navItems = [
     { id: "map", label: "Map", icon: "⌖" },
@@ -618,6 +710,9 @@ function App() {
                 </button>
 
               </form>
+            )}
+            {contactsLoading && (
+            <p className="small-note">Loading contacts from database...</p>
             )}
 
             <div className="contacts-count">
