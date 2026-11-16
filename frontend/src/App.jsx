@@ -4,7 +4,6 @@ import "./App.css";
 
 const API_BASE_URL = "http://127.0.0.1:8003";
 const TEST_USER_ID = 1;
-import "./App.css";
 
 function formatContact(contact) {
   return {
@@ -50,7 +49,31 @@ function Icon({ children }) {
   );
 }
 
+
 function App() {
+    // ==============================
+  // STATE DECLARATIONS
+  // ==============================
+
+  const [activePage, setActivePage] = useState("map");
+
+  // Journey states
+  const [journeyActive, setJourneyActive] = useState(false);
+  const [activeJourney, setActiveJourney] = useState(null);
+  const [destination, setDestination] = useState("");
+  const [journeyLoading, setJourneyLoading] = useState(false);
+
+  // SOS states
+  const [sosConfirm, setSosConfirm] = useState(false);
+  const [sosSent, setSosSent] = useState(false);
+
+  // Emergency contact states
+  const [contacts, setContacts] = useState([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactRelation, setContactRelation] = useState("Family");
   const loadContacts = async () => {
   try {
     setContactsLoading(true);
@@ -77,20 +100,6 @@ function App() {
 useEffect(() => {
   loadContacts();
 }, []);
-  const [activePage, setActivePage] = useState("map");
-  const [journeyActive, setJourneyActive] = useState(false);
-  const [destination, setDestination] = useState("");
-
-  const [sosConfirm, setSosConfirm] = useState(false);
-  const [sosSent, setSosSent] = useState(false);
-
-  const [contacts, setContacts] = useState([]);
-  const [contactsLoading, setContactsLoading] = useState(true);
-  const [showContactForm, setShowContactForm] = useState(false);
-
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactRelation, setContactRelation] = useState("Family");
 
   // Start or end a demo journey
   const startJourney = () => {
